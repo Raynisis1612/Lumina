@@ -209,8 +209,7 @@ function Library:CreateWindow(options)
 	
 	-- Intro Tween
 	MainFrame.Size = UDim2.new(0, 580, 0, 380)
-	MainFrame.GroupTransparency = 1
-	Tween(MainFrame, {Size = UDim2.new(0, 600, 0, 400), GroupTransparency = 0}, 0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	Tween(MainFrame, {Size = UDim2.new(0, 600, 0, 400)}, 0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 
 	-- Topbar
 	local Topbar = Create("Frame", {
