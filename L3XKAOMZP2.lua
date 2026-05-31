@@ -506,7 +506,7 @@ function Library:CreateWindow(options)
 			Create("UIPadding", {PaddingTop = UDim.new(0, 14), PaddingBottom = UDim.new(0, 14), PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14)})
 		})
 		
-		SectionScroll.UIListLayout.GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		SectionScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 			SectionScroll.CanvasSize = UDim2.new(0, 0, 0, SectionScroll.UIListLayout.AbsoluteContentSize.Y + 28)
 		end)
 
