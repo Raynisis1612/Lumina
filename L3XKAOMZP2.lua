@@ -32,6 +32,51 @@ local RunService = game:GetService("RunService")
 -- Protection for executors vs studio
 local ParentGui = RunService:IsStudio() and game.Players.LocalPlayer:WaitForChild("PlayerGui") or (gethui and gethui() or CoreGui)
 
+-- Lucide Icons (loaded from Rayfield's open-source sprite sheet library)
+local Icons = nil
+local function loadIcons()
+	local success, result = pcall(function()
+		return loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/refs/heads/main/icons.lua'))()
+	end)
+	if success then Icons = result end
+end
+task.spawn(loadIcons)
+
+local function getIcon(name)
+	if not Icons then return nil end
+	name = string.match(string.lower(name), "^%s*(.*)%s*$")
+	local sizedicons = Icons['48px']
+	if not sizedicons then return nil end
+	local r = sizedicons[name]
+	if not r then return nil end
+	local rirs = r[2]
+	local riro = r[3]
+	if type(r[1]) ~= "number" or type(rirs) ~= "table" or type(riro) ~= "table" then return nil end
+	return {
+		id = r[1],
+		imageRectSize = Vector2.new(rirs[1], rirs[2]),
+		imageRectOffset = Vector2.new(riro[1], riro[2]),
+	}
+end
+
+local function resolveIcon(icon)
+	if not icon or icon == 0 then return "", nil, nil end
+	if typeof(icon) == "number" then return "rbxassetid://" .. icon, nil, nil end
+	if typeof(icon) == "string" then
+		if string.find(icon, "rbxassetid://") == 1 or string.find(icon, "rbxasset://") == 1 or string.find(icon, "rbxthumb://") == 1 then
+			return icon, nil, nil
+		end
+		-- Treat as Lucide icon name
+		local asset = getIcon(icon)
+		if asset then
+			return "rbxassetid://" .. asset.id, asset.imageRectOffset, asset.imageRectSize
+		end
+		warn("iOS19 UI | Could not find Lucide icon: " .. icon)
+		return "", nil, nil
+	end
+	return "", nil, nil
+end
+
 -- Utility Functions
 local function Create(className, properties, children)
 	local inst = Instance.new(className)
@@ -403,6 +448,30 @@ function Library:CreateWindow(options)
 		Position = UDim2.new(0, 0, 0, 44),
 		Size = UDim2.new(0, 160, 1, -44),
 		ZIndex = 1
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
+	})
+	-- Corner repair: fill in the top corners of the sidebar that shouldn't be rounded
+	Create("Frame", {
+		Name = "SidebarTopFix",
+		Parent = Sidebar,
+		BackgroundColor3 = Library.Theme.Elevated,
+		BackgroundTransparency = 0.5,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0, 0),
+		Size = UDim2.new(1, 0, 0, 16),
+		ZIndex = 1
+	})
+	-- Corner repair: fill in the bottom-right that shouldn't be rounded
+	Create("Frame", {
+		Name = "SidebarBRFix",
+		Parent = Sidebar,
+		BackgroundColor3 = Library.Theme.Elevated,
+		BackgroundTransparency = 0.5,
+		BorderSizePixel = 0,
+		Position = UDim2.new(1, -16, 1, -16),
+		Size = UDim2.new(0, 16, 0, 16),
+		ZIndex = 1
 	})
 	
 	Create("Frame", {
@@ -412,7 +481,8 @@ function Library:CreateWindow(options)
 		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		Position = UDim2.new(1, -1, 0, 0),
-		Size = UDim2.new(0, 1, 1, 0)
+		Size = UDim2.new(0, 1, 1, 0),
+		ZIndex = 2
 	})
 
 	local TabContainerList = Create("ScrollingFrame", {
@@ -441,7 +511,10 @@ function Library:CreateWindow(options)
 	function WindowObj:CreateTab(tabOptions)
 		tabOptions = tabOptions or {}
 		local TabName = tabOptions.Name or "Tab"
-		local TabIcon = tabOptions.Icon or "rbxassetid://3926305904"
+		local TabIconRaw = tabOptions.Icon or "rbxassetid://3926305904"
+		
+		-- Resolve the icon (supports Lucide names, rbxassetid:// strings, and numeric IDs)
+		local resolvedImage, resolvedRectOffset, resolvedRectSize = resolveIcon(TabIconRaw)
 		
 		local TabObj = {Sections = {}}
 
@@ -462,12 +535,11 @@ function Library:CreateWindow(options)
 			BackgroundTransparency = 1,
 			Position = UDim2.new(0, 12, 0.5, -10),
 			Size = UDim2.new(0, 20, 0, 20),
-			Image = TabIcon,
-			ImageRectOffset = tabOptions.IconRectOffset or Vector2.new(0,0),
-			ImageRectSize = tabOptions.IconRectSize or Vector2.new(0,0),
+			Image = resolvedImage,
+			ImageRectOffset = resolvedRectOffset or tabOptions.IconRectOffset or Vector2.new(0,0),
+			ImageRectSize = resolvedRectSize or tabOptions.IconRectSize or Vector2.new(0,0),
 			ImageColor3 = Library.Theme.TextSecondary
 		})
-		if tabOptions.IconRectSize == nil then TIcon.ImageRectSize = Vector2.new(0,0) end
 		
 		local TTitle = Create("TextLabel", {
 			Name = "Title",
@@ -553,14 +625,23 @@ function Library:CreateWindow(options)
 			
 			local function AddDivider()
 				if #SectionContainer:GetChildren() > 2 then
-					Create("Frame", {
+					-- iOS-style divider: inset from left (aligned with text), flush to right edge
+					local DivWrap = Create("Frame", {
 						Name = "Divider",
 						Parent = SectionContainer,
+						BackgroundTransparency = 1,
+						BorderSizePixel = 0,
+						Size = UDim2.new(1, 0, 0, 1),
+						ClipsDescendants = true
+					})
+					Create("Frame", {
+						Name = "Line",
+						Parent = DivWrap,
 						BackgroundColor3 = Library.Theme.Divider,
 						BackgroundTransparency = 0.5,
 						BorderSizePixel = 0,
-						Position = UDim2.new(0, 12, 0, 0),
-						Size = UDim2.new(1, -24, 0, 1)
+						Position = UDim2.new(0, 16, 0, 0),
+						Size = UDim2.new(1, -16, 1, 0)
 					})
 				end
 			end
