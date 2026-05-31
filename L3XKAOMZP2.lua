@@ -40,7 +40,7 @@ local function loadIcons()
 	end)
 	if success then Icons = result end
 end
-task.spawn(loadIcons)
+loadIcons() -- Load synchronously so icons are available immediately
 
 local function getIcon(name)
 	if not Icons then return nil end
@@ -641,7 +641,7 @@ function Library:CreateWindow(options)
 						BackgroundTransparency = 0.5,
 						BorderSizePixel = 0,
 						Position = UDim2.new(0, 16, 0, 0),
-						Size = UDim2.new(1, -16, 1, 0)
+						Size = UDim2.new(1, -32, 1, 0)
 					})
 				end
 			end
