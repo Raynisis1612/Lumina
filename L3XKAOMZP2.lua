@@ -42,9 +42,18 @@ local function loadIcons()
 end
 loadIcons() -- Load synchronously so icons are available immediately
 
+local IconAliases = {
+	house = "home",
+	["house-key"] = "home-key",
+	["house-plus"] = "home-plus",
+	["house-minus"] = "home-minus",
+	["house-x"] = "home-x"
+}
+
 local function getIcon(name)
 	if not Icons then return nil end
 	name = string.match(string.lower(name), "^%s*(.*)%s*$")
+	name = IconAliases[name] or name
 	local sizedicons = Icons['48px']
 	if not sizedicons then return nil end
 	local r = sizedicons[name]
@@ -329,24 +338,56 @@ function Library:CreateWindow(options)
 	local Topbar = Create("Frame", {
 		Name = "Topbar",
 		Parent = MainFrame,
-		BackgroundColor3 = Library.Theme.Background,
-		BackgroundTransparency = 0.2,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Size = UDim2.new(1, 0, 0, 44),
 		ZIndex = 2
-	}, {
-		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
 	})
 	
+	-- Topbar background parts (no overlap, avoiding discoloration)
 	Create("Frame", {
-		Name = "BottomFix",
+		Name = "BgBottom",
 		Parent = Topbar,
 		BackgroundColor3 = Library.Theme.Background,
 		BackgroundTransparency = 0.2,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, 0, 1, -8),
-		Size = UDim2.new(1, 0, 0, 8),
-		ZIndex = 2
+		Position = UDim2.new(0, 0, 0, 16),
+		Size = UDim2.new(1, 0, 1, -16),
+		ZIndex = 1
+	})
+	Create("Frame", {
+		Name = "BgTopLeft",
+		Parent = Topbar,
+		BackgroundColor3 = Library.Theme.Background,
+		BackgroundTransparency = 0.2,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 0, 0),
+		Size = UDim2.new(0, 16, 0, 16),
+		ZIndex = 1
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
+	})
+	Create("Frame", {
+		Name = "BgTopRight",
+		Parent = Topbar,
+		BackgroundColor3 = Library.Theme.Background,
+		BackgroundTransparency = 0.2,
+		BorderSizePixel = 0,
+		Position = UDim2.new(1, -16, 0, 0),
+		Size = UDim2.new(0, 16, 0, 16),
+		ZIndex = 1
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
+	})
+	Create("Frame", {
+		Name = "BgTopMiddle",
+		Parent = Topbar,
+		BackgroundColor3 = Library.Theme.Background,
+		BackgroundTransparency = 0.2,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 16, 0, 0),
+		Size = UDim2.new(1, -32, 0, 16),
+		ZIndex = 1
 	})
 	
 	Create("Frame", {
@@ -432,9 +473,22 @@ function Library:CreateWindow(options)
 		if input.KeyCode == Library.ToggleKeybind then
 			WindowObj.IsHidden = not WindowObj.IsHidden
 			if WindowObj.IsHidden then
-				Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)}, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+				local tween = Tween(MainFrame, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)}, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+				tween.Completed:Connect(function()
+					if WindowObj.IsHidden then
+						MainFrame.Visible = false
+					end
+				end)
 			else
+				MainFrame.Visible = true
 				Tween(MainFrame, {Size = UDim2.new(0, 600, 0, 400), Position = UDim2.new(0.5, -300, 0.5, -200)}, 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+				-- Force-refresh all scrolling frames' inputs in Roblox
+				for _, v in pairs(MainFrame:GetDescendants()) do
+					if v:IsA("ScrollingFrame") then
+						v.ScrollingEnabled = false
+						v.ScrollingEnabled = true
+					end
+				end
 			end
 		end
 	end)
@@ -442,36 +496,45 @@ function Library:CreateWindow(options)
 	local Sidebar = Create("Frame", {
 		Name = "Sidebar",
 		Parent = MainFrame,
-		BackgroundColor3 = Library.Theme.Elevated,
-		BackgroundTransparency = 0.5,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Position = UDim2.new(0, 0, 0, 44),
 		Size = UDim2.new(0, 160, 1, -44),
 		ZIndex = 1
-	}, {
-		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
 	})
-	-- Corner repair: fill in the top corners of the sidebar that shouldn't be rounded
+	
+	-- Sidebar background parts (no overlap, avoiding discoloration)
 	Create("Frame", {
-		Name = "SidebarTopFix",
+		Name = "BgTop",
 		Parent = Sidebar,
 		BackgroundColor3 = Library.Theme.Elevated,
 		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		Position = UDim2.new(0, 0, 0, 0),
-		Size = UDim2.new(1, 0, 0, 16),
-		ZIndex = 1
+		Size = UDim2.new(1, 0, 1, -16),
+		ZIndex = 0
 	})
-	-- Corner repair: fill in the bottom-right that shouldn't be rounded
 	Create("Frame", {
-		Name = "SidebarBRFix",
+		Name = "BgBottomRight",
 		Parent = Sidebar,
 		BackgroundColor3 = Library.Theme.Elevated,
 		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
-		Position = UDim2.new(1, -16, 1, -16),
+		Position = UDim2.new(0, 16, 1, -16),
+		Size = UDim2.new(1, -16, 0, 16),
+		ZIndex = 0
+	})
+	Create("Frame", {
+		Name = "BgBottomLeftRound",
+		Parent = Sidebar,
+		BackgroundColor3 = Library.Theme.Elevated,
+		BackgroundTransparency = 0.5,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, 0, 1, -16),
 		Size = UDim2.new(0, 16, 0, 16),
-		ZIndex = 1
+		ZIndex = 0
+	}, {
+		Create("UICorner", {CornerRadius = UDim.new(0, 16)})
 	})
 	
 	Create("Frame", {
@@ -488,6 +551,7 @@ function Library:CreateWindow(options)
 	local TabContainerList = Create("ScrollingFrame", {
 		Name = "TabList",
 		Parent = Sidebar,
+		Active = true,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Position = UDim2.new(0, 0, 0, 10),
@@ -557,6 +621,7 @@ function Library:CreateWindow(options)
 		local TabCanvas = Create("CanvasGroup", {
 			Name = TabName.."_Canvas",
 			Parent = ContentContainer,
+			Active = true,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Size = UDim2.new(1, 0, 1, 0),
@@ -567,6 +632,7 @@ function Library:CreateWindow(options)
 		local SectionScroll = Create("ScrollingFrame", {
 			Name = "Scroll",
 			Parent = TabCanvas,
+			Active = true,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Size = UDim2.new(1, 0, 1, 0),
